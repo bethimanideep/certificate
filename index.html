@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="image-gallery"></div>
+
+    <script>
+      const gallery = document.getElementById("image-gallery");
+
+      fetch("http://localhost:8080/template/alltemplates")
+        .then((response) => response.json())
+        .then((data) => {
+          data.forEach((image) => {
+            const img = document.createElement("img");
+            img.src = image.path;
+            img.alt = image.name;
+            gallery.appendChild(img);
+          });
+        })
+        .catch((error) => console.error(error));
+       
+    </script>
+</body>
+</html>
