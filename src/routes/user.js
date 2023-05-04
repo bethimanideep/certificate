@@ -6,14 +6,14 @@ const bcrypt = require("bcrypt");
 const userModel = require("../models/userModel.js");
 const nodemailer = require("nodemailer");
 const jwt = require("jsonwebtoken");
-const cookie = require("cookie-parser")
+const cookie = require("cookie-parser");
 const handlebars = require("handlebars");
 const fs = require("fs");
 const logger = require("./logger");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
 const { log } = require("console");
-authRoute.use(cookie())
+authRoute.use(cookie());
 
 /**
  * @swagger
@@ -82,7 +82,9 @@ authRoute.post("/signup", async (req, res) => {
       return res.send({ message: "user already registered" });
     }
     if (password !== rePassword) {
-      return res.status(400).send({ message: "Please make sure your passwords match." });
+      return res
+        .status(400)
+        .send({ message: "Please make sure your passwords match." });
     }
 
     if (!passwordRegex.test(password)) {
@@ -93,7 +95,9 @@ authRoute.post("/signup", async (req, res) => {
     }
 
     if (!emailReg.test(email)) {
-      return res.status(400).send({ message: "Please provide a valid email address." });
+      return res
+        .status(400)
+        .send({ message: "Please provide a valid email address." });
     }
 
     const salt = await bcrypt.genSaltSync(10);
@@ -133,7 +137,9 @@ authRoute.post("/signup", async (req, res) => {
         return res.status(500).send({ message: "Error sending email" });
       }
       logger.info("successfully signed up");
-      return res.status(200).send({ message: "successfully signup with email" });
+      return res
+        .status(200)
+        .send({ message: "successfully signup with email" });
     });
   } catch (err) {
     logger.error("error occurred", { error: err });
@@ -205,13 +211,12 @@ authRoute.patch("/emailConfirm/:id", async (req, res) => {
  *
  */
 
-
 // login //
 authRoute.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   const validUser = await userModel.findOne({ email });
-  console.log(validUser)
+  console.log(validUser);
 
   if (!email || !password) {
     return res.status(422).send({ message: "fill all the details" });
@@ -222,7 +227,9 @@ authRoute.post("/login", async (req, res) => {
   }
 
   if (!validUser.emailConfirmed) {
-    return res.status(401).send({ message: "Please confirm your email before logging in" });
+    return res
+      .status(401)
+      .send({ message: "Please confirm your email before logging in" });
   }
 
   const isMatch = await bcrypt.compare(password, validUser.password);
@@ -246,12 +253,15 @@ authRoute.post("/login", async (req, res) => {
     httpOnly: true,
   });
   logger.info("login successful");
-  res.status(201).send({ message: "Login successful",token, userDetails: {
-        userName: validUser.name,
-        id: validUser._id,
-        role: validUser.role,
-      },
-    });
+  res.status(201).send({
+    message: "Login successful",
+    token,
+    userDetails: {
+      userName: validUser.name,
+      id: validUser._id,
+      role: validUser.role,
+    },
+  });
 });
 
 /**
@@ -285,7 +295,9 @@ authRoute.post("/forgetPassword", async (req, res) => {
   const user = await userModel.findOne({ email });
 
   if (!user) {
-    return res.status(401).send({ message: "No user found with this email address" });
+    return res
+      .status(401)
+      .send({ message: "No user found with this email address" });
   }
 
   // Generate a password reset token and expiry time
@@ -394,16 +406,10 @@ authRoute.patch("/resetPassword/:id", async (req, res) => {
 });
 
 authRoute.post("/changepassword", async (req, res) => {
-  let token = req.cookies.usercookieAuth
-  let {oldpassword,newpassword}=req.body
-  let temp=false;
-  jwt.verify(token, process.env.JWT_KEY, (err, decode) => {
-    if (err) res.send(err)
-    else {
-      temp=decode;
-    }
-  })
-  if(temp){
+  let { oldpassword, newpassword, email } = req.body;
+  let user = await userModel.findOne({ email });
+
+  if (user) {
     const passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z]).{8,}$/;
     if (!passwordRegex.test(newpassword)) {
       return res.status(400).send({
@@ -412,19 +418,23 @@ authRoute.post("/changepassword", async (req, res) => {
       });
     }
 
-    let user = await userModel.findOne({ email: temp.email })
-    if(!user)res.status(400).json({msg:"User not found in db"})
-    let pass=bcrypt.compareSync(oldpassword,user.password)
-    if(!pass){
-      res.status(400).json({msg:"Password not correct"})
-      return
+    let user = await userModel.findOne({ email });
+    if (!user) res.status(400).json({ msg: "User not found in db" });
+    let pass = bcrypt.compareSync(oldpassword, user.password);
+    if (!pass) {
+      res.status(400).json({ msg: "Password not correct" });
+      return;
     }
     const salt = await bcrypt.genSaltSync(10);
 
-    let hash=bcrypt.hashSync(newpassword,salt)
-    await userModel.findOneAndUpdate({email:temp.email},{password:hash,rePassword:hash})
-    res.status(200).json({"msg":"password changed"})
-
+    let hash = bcrypt.hashSync(newpassword, salt);
+    await userModel.findOneAndUpdate(
+      { email },
+      { password: hash, rePassword: hash }
+    );
+    res.status(200).json({ msg: "password changed" });
+  } else {
+    res.json("user not found");
   }
-})
+});
 module.exports = authRoute;
