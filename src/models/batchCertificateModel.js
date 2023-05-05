@@ -11,8 +11,11 @@ const batchCertificateSchema = new mongoose.Schema({
       email:{ type: String },
       name:{ type: String }
     }
-  ]
+  ],
+  unique: { type: String, unique: true },
+  failedemails:{type:Array}
 });
+
 
 module.exports = mongoose.model("batchCertificate", batchCertificateSchema);
 

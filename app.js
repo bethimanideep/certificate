@@ -5,10 +5,12 @@ const authRoute = require("./src/routes/user");
 const batchCertiRoute= require("./src/routes/batchCertificate")
 const cors = require("cors") ;
 const dotenv = require("dotenv");
+
 const { swaggerUi, swaggerSpec } = require("./swagger");
 const studentRoute = require("./src/routes/student")
 const createTemplate = require("./src/routes/createTemplate");
 const certificateImage = require("./src/routes/certificateImage");
+const { redis } = require("./redis");
 dotenv.config({ path: "./src/config/.env" });
 
 app.use(express.urlencoded({ extended: true }));
@@ -29,6 +31,7 @@ app.get("/", (req, res) => {
  
 app.listen(process.env.PORT, async () => {
    await connection;
+   await redis.connect()
    console.log(`server start at ${process.env.PORT}`);
 });
      
