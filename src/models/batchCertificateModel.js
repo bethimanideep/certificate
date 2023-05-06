@@ -8,12 +8,15 @@ const batchCertificateSchema = new mongoose.Schema({
  
   fields:[
     {
-      email:{ type: String },
-      name:{ type: String }
+      Name:{ type: String },
+      Email:{ type: String },
+      Email_subject:{ type: String },
+      Email_body:{ type: String }
     }
   ],
   unique: { type: String, unique: true },
-  failedemails:{type:Array}
+  failedemails:{type:Array},
+  successemails:{type:Array}
 });
 
 

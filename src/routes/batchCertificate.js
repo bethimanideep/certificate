@@ -49,10 +49,20 @@ batchCertiRoute.get("/email-status", async (req, res) => {
   });
   res.json(status);
 });
-batchCertiRoute.get("/fail",async(req,res)=>{
-  let doc = await BatchCertificate.findOne({ unique: unique })
-  res.json(doc.failedemails)
 
+
+batchCertiRoute.post("/batch/:id",async(req,res)=>{
+  let id=req.params.id
+  try {
+    let document = await BatchCertificate.findById(id)
+    if(!document){
+      res.json("not found")
+      return
+    }
+    res.status(200).json(document)
+  } catch (error) {
+    res.status(200).json("not found")
+  }
 })
 
 batchCertiRoute.post("/certificate/batch/:id", upload.single("csv"), async (req, res) => {
@@ -80,7 +90,6 @@ batchCertiRoute.post("/certificate/batch/:id", upload.single("csv"), async (req,
       .on("data", (data) => {
         csvData.push(data);
       })
-
       .on("end", async () => {
         const batchCertificates = {};
         batchCertificates.template = id;
@@ -90,12 +99,15 @@ batchCertiRoute.post("/certificate/batch/:id", upload.single("csv"), async (req,
         unique = uuidv4();
         batchCertificates.fields = [];
         batchCertificates.failedemails = [];
+        batchCertificates.successemails = [];
         batchCertificates.unique =unique;
         for (let i = 0; i < csvData.length; i++) {
           let object = {};
 
-          object["name"] = csvData[i].Name;
-          object["email"] = csvData[i].Email;
+          object["Name"] = csvData[i].Name;
+          object["Email"] = csvData[i].Email;
+          object["Email_subject"] = csvData[i].Email_subject;
+          object["Email_body"] = csvData[i].Email_body;
 
           batchCertificates.fields.push(object);
         }
@@ -237,6 +249,9 @@ async function sendMailToUser(obj, id, batch) {
             await sendMailQueue.clean(0, "completed");
             reject(err);
           } else {
+            let doc = await BatchCertificate.findOne({ unique: unique })
+            doc.successemails.push(obj);
+            await BatchCertificate.findOneAndUpdate({ unique }, { successemails: doc.successemails })
             resolve(info);
           }
         });
@@ -245,6 +260,90 @@ async function sendMailToUser(obj, id, batch) {
     console.error(err);
   }
 }
+
+//downloads
+batchCertiRoute.post("/allemails",async(req,res)=>{
+  let id=req.body.id
+  let doc = await BatchCertificate.findOne({_id:id})
+  if(!doc)res.json("not found")
+  const data = doc.fields
+
+  const csvWriter = createCsvWriter({
+    path: 'temporaryCSV/output.csv',
+    header: [
+      { id: 'Email', title: 'Email' },
+      { id: 'Email_subject', title: 'Email_subject' },
+      { id: 'Email_body', title: 'Email_body' },
+      { id: 'Name', title: 'Name' }
+    ]
+  });
+
+  csvWriter.writeRecords(data)
+    .then(() => {
+      console.log('CSV file created successfully');
+      res.download('temporaryCSV/output.csv');
+    })
+    .catch((error) => {
+      console.error('Error creating CSV file:', error);
+      res.status(500).send('Error creating CSV file');
+    });
+
+})
+batchCertiRoute.post("/successemails",async(req,res)=>{
+  let id=req.body.id
+  let doc = await BatchCertificate.findOne({_id:id})
+  if(!doc)res.json("not found")
+  console.log(doc)
+  const data = doc.successemails
+
+  const csvWriter = createCsvWriter({
+    path: 'temporaryCSV/output.csv',
+    header: [
+      { id: 'Email', title: 'Email' },
+      { id: 'Email_subject', title: 'Email_subject' },
+      { id: 'Email_body', title: 'Email_body' },
+      { id: 'Name', title: 'Name' }
+    ]
+  });
+
+  csvWriter.writeRecords(data)
+    .then(() => {
+      console.log('CSV file created successfully');
+      res.download('temporaryCSV/output.csv');
+    })
+    .catch((error) => {
+      console.error('Error creating CSV file:', error);
+      res.status(500).send('Error creating CSV file');
+    });
+
+})
+batchCertiRoute.get("/failedemails",async(req,res)=>{
+  let id=req.body.id
+  let doc = await BatchCertificate.findOne({_id:id})
+  if(!doc)res.json("not found")
+  const data = doc.failedemails
+
+  const csvWriter = createCsvWriter({
+    path: 'temporaryCSV/output.csv',
+    header: [
+      { id: 'Email', title: 'Email' },
+      { id: 'Email_subject', title: 'Email_subject' },
+      { id: 'Email_body', title: 'Email_body' },
+      { id: 'Name', title: 'Name' }
+    ]
+  });
+
+  csvWriter.writeRecords(data)
+    .then(() => {
+      console.log('CSV file created successfully');
+      res.download('temporaryCSV/output.csv');
+    })
+    .catch((error) => {
+      console.error('Error creating CSV file:', error);
+      res.status(500).send('Error creating CSV file');
+    });
+
+})
 
 
 module.exports = batchCertiRoute;
