@@ -262,8 +262,8 @@ async function sendMailToUser(obj, id, batch) {
 }
 
 //downloads
-batchCertiRoute.post("/allemails",async(req,res)=>{
-  let id=req.body.id
+batchCertiRoute.get("/allemails/:id",async(req,res)=>{
+  let id=req.params.id
   let doc = await BatchCertificate.findOne({_id:id})
   if(!doc)res.json("not found")
   const data = doc.fields
@@ -317,31 +317,37 @@ batchCertiRoute.post("/successemails",async(req,res)=>{
     });
 
 })
-batchCertiRoute.get("/failedemails",async(req,res)=>{
+
+batchCertiRoute.get("/failedemails/:id",async(req,res)=>{
   let id=req.body.id
-  let doc = await BatchCertificate.findOne({_id:id})
-  if(!doc)res.json("not found")
-  const data = doc.failedemails
-
-  const csvWriter = createCsvWriter({
-    path: 'temporaryCSV/output.csv',
-    header: [
-      { id: 'Email', title: 'Email' },
-      { id: 'Email_subject', title: 'Email_subject' },
-      { id: 'Email_body', title: 'Email_body' },
-      { id: 'Name', title: 'Name' }
-    ]
-  });
-
-  csvWriter.writeRecords(data)
-    .then(() => {
-      console.log('CSV file created successfully');
-      res.download('temporaryCSV/output.csv');
-    })
-    .catch((error) => {
-      console.error('Error creating CSV file:', error);
-      res.status(500).send('Error creating CSV file');
+  try {
+    let doc = await BatchCertificate.findOne({_id:id})
+    if(!doc)res.json("not found")
+    const data = doc.failedemails
+    const csvWriter = createCsvWriter({
+      path: 'temporaryCSV/output.csv',
+      header: [
+        { id: 'Email', title: 'Email' },
+        { id: 'Email_subject', title: 'Email_subject' },
+        { id: 'Email_body', title: 'Email_body' },
+        { id: 'Name', title: 'Name' }
+      ]
     });
+  
+    csvWriter.writeRecords(data)
+      .then(() => {
+        console.log('CSV file created successfully');
+        res.download('temporaryCSV/output.csv');
+      })
+      .catch((error) => {
+        console.error('Error creating CSV file:', error);
+        res.status(500).send('Error creating CSV file');
+      });
+    
+  } catch (error) {
+    res.json("not found")
+  }
+
 
 })
 
