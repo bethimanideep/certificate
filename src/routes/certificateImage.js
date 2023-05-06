@@ -154,14 +154,14 @@ certificateImage.get("/certificatedetails/:id", async (req, res) => {
     const batchCertificates = await batchCertificateData
       .find({ template: id })
       .populate("template");
-      const response = batchCertificates.map(batchCertificate => {
-        return {
-          batch: batchCertificate.batch,
-          fieldsLength: batchCertificate.fields.length
-        }
-      });
+      // const response = batchCertificates.map(batchCertificate => {
+      //   return {
+      //     batch: batchCertificate.batch,
+      //     fieldsLength: batchCertificate.fields.length
+      //   }
+      // });
 
-    res.status(201).send(response);
+    res.status(201).send(batchCertificates);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Something went wrong." });
