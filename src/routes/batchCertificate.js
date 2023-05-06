@@ -289,8 +289,8 @@ batchCertiRoute.get("/allemails/:id",async(req,res)=>{
     });
 
 })
-batchCertiRoute.post("/successemails",async(req,res)=>{
-  let id=req.body.id
+batchCertiRoute.get("/successemails/:id",async(req,res)=>{
+  let id=req.params.id
   let doc = await BatchCertificate.findOne({_id:id})
   if(!doc)res.json("not found")
   console.log(doc)
@@ -319,7 +319,7 @@ batchCertiRoute.post("/successemails",async(req,res)=>{
 })
 
 batchCertiRoute.get("/failedemails/:id",async(req,res)=>{
-  let id=req.body.id
+  let id=req.params.id
   try {
     let doc = await BatchCertificate.findOne({_id:id})
     if(!doc)res.json("not found")
@@ -347,7 +347,6 @@ batchCertiRoute.get("/failedemails/:id",async(req,res)=>{
   } catch (error) {
     res.json("not found")
   }
-
 
 })
 
