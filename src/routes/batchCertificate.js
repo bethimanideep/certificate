@@ -21,34 +21,34 @@ const createCsvWriter = require("csv-writer").createObjectCsvWriter;
 const Queue = require("bull");
 const { redis } = require("../../redis");
 
-const sendMailQueue = new Queue("sendMail", {
-  redis: {
-    host: process.env.REDIS_URL,
-    port: process.env.REDIS_PORT,
-    password: process.env.REDIS_PASSWORD,
-    // host: "127.0.0.1",
-    // port: "6379",
-  },
-});
+// const sendMailQueue = new Queue("sendMail", {
+//   redis: {
+//     host: process.env.REDIS_URL,
+//     port: process.env.REDIS_PORT,
+//     password: process.env.REDIS_PASSWORD,
+//     // host: "127.0.0.1",
+//     // port: "6379",
+//   },
+// });
 
-batchCertiRoute.get("/email-status", async (req, res) => {
-  const jobs = await sendMailQueue.getJobs([
-    "completed",
-    "failed",
-    "waiting",
-    "active",
-  ]);
+// batchCertiRoute.get("/email-status", async (req, res) => {
+//   const jobs = await sendMailQueue.getJobs([
+//     "completed",
+//     "failed",
+//     "waiting",
+//     "active",
+//   ]);
 
-  const status = jobs.map((job) => {
-    return {
-      name: job?.data?.data?.Name,
-      email: job?.data?.data?.Email,
-      status: job?.status,
-      result: job?.returnvalue,
-    };
-  });
-  res.json(status);
-});
+//   const status = jobs.map((job) => {
+//     return {
+//       name: job?.data?.data?.Name,
+//       email: job?.data?.data?.Email,
+//       status: job?.status,
+//       result: job?.returnvalue,
+//     };
+//   });
+//   res.json(status);
+// });
 
 
 batchCertiRoute.post("/batch/:id",async(req,res)=>{
@@ -84,6 +84,7 @@ batchCertiRoute.post("/certificate/batch/:id", upload.single("csv"), async (req,
     const { id } = req.params;
     const { batch } = req.body;
 
+    unique = uuidv4();
     const csvData = [];
     fs.createReadStream(req.file.path)
       .pipe(csv())
@@ -96,10 +97,10 @@ batchCertiRoute.post("/certificate/batch/:id", upload.single("csv"), async (req,
         batchCertificates.batch = batch;
         batchCertificates.emailBody = csvData[0].Email_body;
         batchCertificates.emailSubject = csvData[0].Email_subject;
-        unique = uuidv4();
         batchCertificates.fields = [];
         batchCertificates.failedemails = [];
         batchCertificates.successemails = [];
+        console.log(unique,"ddd")
         batchCertificates.unique =unique;
         for (let i = 0; i < csvData.length; i++) {
           let object = {};
@@ -113,24 +114,28 @@ batchCertiRoute.post("/certificate/batch/:id", upload.single("csv"), async (req,
         }
         const certificate = new BatchCertificate(batchCertificates);//batchdetails saving in batchCertificate
         await certificate.save();
+        
 
         for (let i = 0; i < csvData.length; i++) {
           let obj = csvData[i];
+          // console.log(obj,id,batch,"manideeep")
           try {
-            await sendMailQueue.add({
-              data: obj,
-              template: id,
-              batch: batch
-            });
+            // await sendMailQueue.add({
+            //   data: obj,
+            //   template: id,
+            //   batch: batch
+            // });
+            sendMailToUser(obj,id,batch)
           } catch (err) {
             console.error(`Error adding job to queue: ${err.message}`);
           }
         }
+        console.log(unique,"aaa")
+        let doc = await BatchCertificate.findOne({ unique })
+        return res.status(200).json(doc);
       });
-    await sendMailQueue.clean(0, "completed");
-    return res.status(200).json({
-      message: "Certificates generated and sent successfully",
-    });
+ 
+    
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: err.message });
@@ -138,15 +143,15 @@ batchCertiRoute.post("/certificate/batch/:id", upload.single("csv"), async (req,
 }
 );
 
-sendMailQueue.process(async (job) => {
-  const { data, template, batch } = job.data;
-
-  try {
-    return await sendMailToUser(data, template, batch);
-  } catch (error) {
-    done(new Error("Error creating batch certificate"));
-  }
-});
+// sendMailQueue.process(async (job) => {
+//   const { data, template, batch } = job.data;
+//   console.log(data,template,batch)
+//   try {
+//     return await sendMailToUser(data, template, batch);
+//   } catch (error) {
+//     done(new Error("Error creating batch certificate"));
+//   }
+// });
 async function sendMailToUser(obj, id, batch) {
   try {
     const getData = await certificateModelData
@@ -242,7 +247,6 @@ async function sendMailToUser(obj, id, batch) {
         .createTransport(mailConfig)
         .sendMail(mailOptions, async (err, info) => {
           if (err) {
-            
             let doc = await BatchCertificate.findOne({unique:unique})
             doc.failedemails.push(obj);
             await BatchCertificate.findOneAndUpdate({unique},{failedemails:doc.failedemails})
