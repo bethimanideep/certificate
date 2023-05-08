@@ -130,6 +130,7 @@ createTemplate.get("/singletemplate/:id", async (req, res) => {
         "Content-Type": image.contentType,
         "Content-Disposition": `inline; filename="${image.name}"`,
       });
+      console.log(data,"temp")
       res.end(data);
     });
   } catch (error) {

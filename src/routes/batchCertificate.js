@@ -27,6 +27,22 @@ const batchCertificateModel = require("../models/batchCertificateModel");
 //   let data=await 
 // })
 
+batchCertiRoute.get("/image", async (req, res) => {
+  let {path}=req.query
+  try {
+    fs.readFile(path, (err, data) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).send("Error reading image from disk");
+      }
+      res.end(data);
+    });
+    
+  } catch (error) {
+    return res.status(500).send({ message: "Error fetching images from database", error });
+  }
+
+});
 batchCertiRoute.post("/batch/:id", async (req, res) => {
   //uniq/
   let id = req.params.id;
@@ -182,7 +198,6 @@ async function sendMailToUser(obj, id, batch) {
     const fileName = `${timeStamp}${certificataName}.${type}`;
     const filePath = `uploads/bulkcertificate/${fileName}`;
 
-    
     let previousdata= await BatchCertificate.findOne({ unique });
     let dd = previousdata.Imagepath
     dd.push({ Email: obj.Email, Path: filePath })
@@ -191,10 +206,6 @@ async function sendMailToUser(obj, id, batch) {
 
 
     fs.writeFileSync(filePath, imageData);
-
-
-
-
 
     const batchData = await studentCertificates({
       name: obj.Name,
