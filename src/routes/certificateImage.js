@@ -16,27 +16,27 @@ certificateImage.post("/generate-image", async (req, res) => {
   try {
     const token = req.headers["authorization"]?.split(" ")[1];
     if (!token) {
-      
+
       return res.status(401).send({ message: "Unauthorized" });
-    } 
+    }
     const { role } = jwt.verify(token, process.env.JWT_KEY);
     if (role !== "Admin") {
-     
+
       return res.status(403).send({ message: "Access denied" });
     }
     const { template, fields, canvasHeight, canvasWidth } = req.body;
     console.log("ID: ", template);
-   
+
     try {
       const deletedFields = await certificateData.deleteMany({
         template: template,
-      }); 
+      });
       console.log(
         `${deletedFields.deletedCount} documents deleted from certificateData collection.`
       );
     } catch (err) {
       console.error(err);
-    } 
+    }
     if (!template || fields.length <= 0) {
       return res.status(401).send({ message: "please fill valid input" });
     }
@@ -64,22 +64,22 @@ certificateImage.post("/generate-image", async (req, res) => {
         ctx.textBaseline = "middle";
         if (field.alignment === "center") {
           ctx.textAlign = "center";
-          ctx.fillText(field.text, centerX, centerY-1);
+          ctx.fillText(field.text, centerX, centerY - 1);
         } else if (field.alignment === "left") {
           ctx.textAlign = "left";
-          ctx.fillText(field.text, field.x, centerY-1);
+          ctx.fillText(field.text, field.x, centerY - 1);
         } else if (field.alignment === "right") {
           ctx.textAlign = "right";
-          let textX = field.x + field.width; 
+          let textX = field.x + field.width;
           let textY = field.y + field.height / 2;
-          ctx.fillText(field.text, textX, textY-1);
+          ctx.fillText(field.text, textX, textY - 1);
           ctx.fillStyle = "transparent";
           ctx.fillRect(field.x, field.y, field.width, field.height);
         }
       }
     };
     draw_fields();
-   
+
     const imageData = canvas.toBuffer(imagePath.contentType);
     const timeStamp = Math.floor(Math.random() * 10000);
     const certificataName = imagePath.name;
@@ -87,7 +87,7 @@ certificateImage.post("/generate-image", async (req, res) => {
     const fileName = `${timeStamp}${certificataName}.${type}`;
     console.log("fileName", fileName)
     const filePath = `uploads/certificate/${fileName}`;
-     console.log(filePath)
+    console.log(filePath)
     fs.writeFileSync(filePath, imageData);
     const saveCertificateData = await certificateData.create({
       template,
@@ -110,30 +110,30 @@ certificateImage.post("/generate-image", async (req, res) => {
   }
 });
 
-certificateImage.get('/certificateimage/:id',async (req,res) => {
-  try{
+certificateImage.get('/certificateimage/:id', async (req, res) => {
+  try {
     const id = req.params.id;
-    const certificate = await certificateData.findOne({template: id})
-  
-    if (!certificate ) {
+    const certificate = await certificateData.findOne({ template: id })
+
+    if (!certificate) {
       return res.status(404).send({ message: "Image not found" });
     }
     fs.readFile(certificate.path, (err, data) => {
       if (err) {
         console.error(err);
-        logger.error("error occured",{err}) 
+        logger.error("error occured", { err })
         return res.status(500).send("Error reading image from disk");
       }
-  
+
       res.writeHead(200, {
         "Content-Type": certificate.contentType,
         "Content-Disposition": `inline; filename="${certificate.name}"`,
       });
       res.end(data);
     });
-  }catch (error) {
+  } catch (error) {
     logger.error("error occured", { error });
-    return res.status(500).send({message : "Error fetching images from database",error});
+    return res.status(500).send({ message: "Error fetching images from database", error });
   }
 
 })
@@ -142,24 +142,18 @@ certificateImage.get("/certificatedetails/:id", async (req, res) => {
   try {
     const token = req.headers["authorization"]?.split(" ")[1];
     if (!token) {
-      
+
       return res.status(401).send({ message: "Unauthorized" });
     }
     const { role } = jwt.verify(token, process.env.JWT_KEY);
     if (role !== "Admin") {
-     
+
       return res.status(403).send({ message: "Access denied" });
     }
     const { id } = req.params;
     const batchCertificates = await batchCertificateData
       .find({ template: id })
       .populate("template");
-      // const response = batchCertificates.map(batchCertificate => {
-      //   return {
-      //     batch: batchCertificate.batch,
-      //     fieldsLength: batchCertificate.fields.length
-      //   }
-      // });
 
     res.status(201).send(batchCertificates);
   } catch (err) {
@@ -169,104 +163,93 @@ certificateImage.get("/certificatedetails/:id", async (req, res) => {
 });
 
 certificateImage.post("/samplecsv/:id", async (req, res) => {
-try {
-  const token = req.headers["authorization"]?.split(" ")[1];
-  if (!token) {
-    
-    return res.status(401).send({ message: "Unauthorized" });
-  }
-  const { role } = jwt.verify(token, process.env.JWT_KEY);
-  if (role !== "Admin") {
-    
-    return res.status(403).send({ message: "Access denied" });
-  }
-  const { id } = req.params;
-  const certificateFields = await certificateData.findOne({ template: id });
-  console.log(certificateFields);
-  const fieldsArray = certificateFields.fields;
-  const fields = [
-    { id: "Email", title: "Email" },
-    { id: "Email_subject", title: "Email_subject" },
-    { id: "Email_body", title: "Email_body" },
-  ];
-  const data = [
-    {
-      Email: "pratik.ganjale59@gmail.com",
-      Email_subject: "course completion certificate",
-      Email_body:
-        "This is informed you that you have succefully completed the course of full stack web dev",
-    },
-  ];
-  for (let field of fieldsArray) {
-    fields.push({ id: field.name, title: field.name });
-  }
-  for (let field of fieldsArray) {
-    data[0][field.name] = field.text;
-  }
-  const csvWriter = createCsvWriter({
-    path: "uploads/csv/output.csv",
-    header: fields,
-  });
-  csvWriter
-    .writeRecords(data)
-    .then(() => {
-      console.log("CSV file created successfully");
-      const csvFilePath = path.join(
-        __dirname,
-        "..",
-        "..",
-        "uploads",
-        "csv",
-        "output.csv"
-      );
-      res.setHeader("Content-disposition", "attachment; filename=output.csv");
-      res.set("Content-Type", "text/csv");
-      const readStream = fs.createReadStream(csvFilePath);
-      readStream.pipe(res);
-      readStream.on("error", (err) => {
-        console.log(err);
-        return res.status(500).send(err);
-      });
-      readStream.on("close", () => {
-        //fs.unlinkSync(csvFilePath);
-        console.log("CSV file deleted successfully");
-      });
-    })
-    .catch((error) => {
-      console.log(error);
-      return res.status(500).send(error);
+  try {
+    const token = req.headers["authorization"]?.split(" ")[1];
+    if (!token) {
+
+      return res.status(401).send({ message: "Unauthorized" });
+    }
+    const { role } = jwt.verify(token, process.env.JWT_KEY);
+    if (role !== "Admin") {
+
+      return res.status(403).send({ message: "Access denied" });
+    }
+    const { id } = req.params;
+    const certificateFields = await certificateData.findOne({ template: id });
+    console.log(certificateFields);
+    const fieldsArray = certificateFields.fields;
+    const fields = [
+      { id: "Email", title: "Email" },
+      { id: "Email_subject", title: "Email_subject" },
+      { id: "Email_body", title: "Email_body" },
+    ];
+    const data = [
+      {
+        Email: "pratik.ganjale59@gmail.com",
+        Email_subject: "course completion certificate",
+        Email_body:
+          "This is informed you that you have succefully completed the course of full stack web dev",
+      },
+    ];
+    for (let field of fieldsArray) {
+      fields.push({ id: field.name, title: field.name });
+    }
+    for (let field of fieldsArray) {
+      data[0][field.name] = field.text;
+    }
+    const csvWriter = createCsvWriter({
+      path: "uploads/csv/output.csv",
+      header: fields,
     });
-} catch (error) {
-  logger.error(error)
-  return res.status(404).send({message : "error while downloading csv file", error})
-}
- 
-});
-certificateImage.post("/alldetails/:id", async (req, res) => {
-  try{
-    // const token = req.headers["authorization"]?.split(" ")[1];
-
-    // if (!token) {
-    //   logger.error("No token provided");
-    //   return res.status(401).send({ message: "Unauthorized" });
-    // }
-    // const { role } = jwt.verify(token, process.env.JWT_KEY);
-    // if (role !== "Admin") {
-    //   logger.error("Not authorized");
-    //   return res.status(403).send({ message: "Access denied" });
-    // }
-
-  const { id } = req.params;
-  const certificateDetails = await certificateData
-    .find({ template: id })
-    .populate("template");
-  if (certificateDetails.length <= 0) {
-    return res.status(401).send({ message: "Data not available" });
+    csvWriter
+      .writeRecords(data)
+      .then(() => {
+        console.log("CSV file created successfully");
+        const csvFilePath = path.join(
+          __dirname,
+          "..",
+          "..",
+          "uploads",
+          "csv",
+          "output.csv"
+        );
+        res.setHeader("Content-disposition", "attachment; filename=output.csv");
+        res.set("Content-Type", "text/csv");
+        const readStream = fs.createReadStream(csvFilePath);
+        readStream.pipe(res);
+        readStream.on("error", (err) => {
+          console.log(err);
+          return res.status(500).send(err);
+        });
+        readStream.on("close", () => {
+          //fs.unlinkSync(csvFilePath);
+          console.log("CSV file deleted successfully");
+        });
+      })
+      .catch((error) => {
+        console.log(error);
+        return res.status(500).send(error);
+      });
+  } catch (error) {
+    logger.error(error)
+    return res.status(404).send({ message: "error while downloading csv file", error })
   }
-  return res
-    .status(201)
-    .send({ message: "data as per template id", certificateDetails });
-  }catch(error){
+
+});
+
+certificateImage.post("/alldetails/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const certificateDetails = await certificateData
+      .find({ template: id })
+      .populate("template");
+    if (certificateDetails.length <= 0) {
+      return res.status(401).send({ message: "Data not available" });
+    }
+    return res
+      .status(201)
+      .send({ message: "data as per template id", certificateDetails });
+  } catch (error) {
     logger.error("error occured", { error });
     return res.status(500).send("Error adding data to the certificate", error);
   }

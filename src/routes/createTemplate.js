@@ -31,19 +31,19 @@ createTemplate.post("/uploadtemplate", upload.single("image"), (req, res) => {
   try {
     const token = req.headers["authorization"]?.split(" ")[1];
     if (!token) {
-      
+
       return res.status(401).send({ message: "Unauthorized" });
     }
     const { role } = jwt.verify(token, process.env.JWT_KEY);
     if (role !== "Admin") {
-     
+
       return res.status(403).send({ message: "Access denied" });
     }
-    const {name} = req.body ;
-    
+    const { name } = req.body;
+
     const dimensions = sizeOf(req.file.path);
     let height = dimensions.height;
-    let width = dimensions.width ;
+    let width = dimensions.width;
     const aspectRatio = dimensions.width / dimensions.height;
     const image = new imageData({
       name: name,
@@ -51,28 +51,28 @@ createTemplate.post("/uploadtemplate", upload.single("image"), (req, res) => {
         .join("uploads/templates", req.file.filename)
         .replace(/\\/g, "/"),
       contentType: req.file.mimetype,
-      height : height,
-      width : width 
+      height: height,
+      width: width
     });
     image.save();
     logger.info("file saved successfully");
-    return res.status(200).send({message :"File uploaded and saved to database successfully!", aspectRatio, height, width});
+    return res.status(200).send({ message: "File uploaded and saved to database successfully!", aspectRatio, height, width });
   } catch (error) {
     logger.error("error occured", { error });
     return res.status(500).send("Error saving image to database", error);
   }
-}); 
+});
 
 createTemplate.get("/alltemplates", async (req, res) => {
   try {
     const token = req.headers["authorization"]?.split(" ")[1];
     if (!token) {
-      
+
       return res.status(401).send({ message: "Unauthorized" });
     }
     const { role } = jwt.verify(token, process.env.JWT_KEY);
     if (role !== "Admin") {
-      
+
       return res.status(403).send({ message: "Access denied" });
     }
     const images = await imageData.find({});
@@ -89,14 +89,14 @@ createTemplate.get("/alltemplates", async (req, res) => {
             logger.error("error occured", { err });
             return reject(`Error reading image from disk: ${image.name}`);
           }
-          
+
           resolve({
             id: image._id,
             name: image.name,
             path: filePath,
             contentType: image.contentType,
-            height : image.height,
-            width : image.width
+            height: image.height,
+            width: image.width
           });
         });
       });
@@ -106,7 +106,7 @@ createTemplate.get("/alltemplates", async (req, res) => {
   } catch (error) {
     console.log(error);
     logger.error("error occured", { error });
-    return res.status(500).send({message : "Error fetching images from database",error});
+    return res.status(500).send({ message: "Error fetching images from database", error });
   }
 });
 
@@ -122,7 +122,7 @@ createTemplate.get("/singletemplate/:id", async (req, res) => {
     fs.readFile(image.path, (err, data) => {
       if (err) {
         console.error(err);
-        logger.error("error occured",{err}) 
+        logger.error("error occured", { err })
         return res.status(500).send("Error reading image from disk");
       }
 
@@ -134,7 +134,7 @@ createTemplate.get("/singletemplate/:id", async (req, res) => {
     });
   } catch (error) {
     logger.error("error occured", { error });
-    return res.status(500).send({message : "Error fetching images from database",error});
+    return res.status(500).send({ message: "Error fetching images from database", error });
   }
 });
 
@@ -142,12 +142,12 @@ createTemplate.patch("/updatetemplate/:id", async (req, res) => {
   try {
     const token = req.headers["authorization"]?.split(" ")[1];
     if (!token) {
-      
+
       return res.status(401).send({ message: "Unauthorized" });
     }
     const { role } = jwt.verify(token, process.env.JWT_KEY);
     if (role !== "Admin") {
-      
+
       return res.status(403).send({ message: "Access denied" });
     }
     const { id } = req.params;
@@ -157,14 +157,14 @@ createTemplate.patch("/updatetemplate/:id", async (req, res) => {
     if (existingImage) {
       return res.status(400).send({ message: "Image name already exists" });
     }
-    
+
     const image = await imageData.findById(id);
 
     if (!image) {
       return res.status(404).send({ message: "Image not found" });
     }
 
-    var contentType= image.contentType.split("/")[1];
+    var contentType = image.contentType.split("/")[1];
     // console.log(contentType);
     const oldPath = image.path;
     const newPath = path.join("uploads/templates", `${name}.${contentType}`);
@@ -172,7 +172,7 @@ createTemplate.patch("/updatetemplate/:id", async (req, res) => {
     fs.rename(oldPath, newPath, async (err) => {
       if (err) {
         console.error(err);
-        logger.error("error occured",{err});
+        logger.error("error occured", { err });
         return res.status(500).send("Error renaming image file");
       }
 
@@ -181,14 +181,14 @@ createTemplate.patch("/updatetemplate/:id", async (req, res) => {
       image.path = newPath;
 
       await image.save();
- 
+
       logger.info("image updated successfully");
 
       return res.send({ message: "Image updated successfully" });
     });
   } catch (error) {
-    logger.error("error occured",{error});
-    return res.status(500).send({message : "error getting while edit name", error});
+    logger.error("error occured", { error });
+    return res.status(500).send({ message: "error getting while edit name", error });
   }
 });
 
@@ -223,12 +223,12 @@ createTemplate.delete("/deletetemplate/:id", async (req, res) => {
           .status(500)
           .send("Error deleting image from disk. File has been restored.");
       }
- 
-     return res.send({ message: "Image deleted successfully" });
+
+      return res.send({ message: "Image deleted successfully" });
     });
   } catch (error) {
     logger.error("error occured", { error });
-    return res.status(500).send({message : "error getting while delete template"});
+    return res.status(500).send({ message: "error getting while delete template" });
 
   }
 });

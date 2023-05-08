@@ -21,6 +21,12 @@ const batchCertificateSchema = new mongoose.Schema({
   unique: { type: String, unique: true },
   failedemails: { type: Array },
   successemails: { type: Array },
+  Imagepath: {
+    type: [{ type: Object }],
+    default: []
+  }
 });
 
 module.exports = mongoose.model("batchCertificate", batchCertificateSchema);
+
+

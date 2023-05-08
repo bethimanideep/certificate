@@ -16,42 +16,15 @@ const certificateModelData = require("../models/certificateModel");
 const studentCertificates = require("../models/studentModel");
 const { v4: uuidv4 } = require("uuid");
 let unique;
+let arr = [];
 
 const createCsvWriter = require("csv-writer").createObjectCsvWriter;
-const Queue = require("bull");
-const { redis } = require("../../redis");
 const { template } = require("handlebars");
+const batchCertificateModel = require("../models/batchCertificateModel");
 
-// const sendMailQueue = new Queue("sendMail", {
-//   redis: {
-//     host: process.env.REDIS_URL,
-//     port: process.env.REDIS_PORT,
-//     password: process.env.REDIS_PASSWORD,
-//     // host: "127.0.0.1",
-//     // port: "6379",
-//   },
-// });
-
-// batchCertiRoute.get("/email-status", async (req, res) => {
-//   const jobs = await sendMailQueue.getJobs([
-//     "completed",
-//     "failed",
-//     "waiting",
-//     "active",
-//   ]);
-
-//   const status = jobs.map((job) => {
-//     return {
-//       name: job?.data?.data?.Name,
-//       email: job?.data?.data?.Email,
-//       status: job?.status,
-//       result: job?.returnvalue,
-//     };
-//   });
-//   res.json(status);
-// });
 
 batchCertiRoute.post("/batch/:id", async (req, res) => {
+  //uniq/
   let id = req.params.id;
   try {
     let document = await BatchCertificate.findById(id);
@@ -70,7 +43,6 @@ batchCertiRoute.post(
   upload.single("csv"),
   async (req, res) => {
     try {
-      await redis.flushAll();
       const token = req.headers["authorization"]?.split(" ")[1];
       if (!token) {
         return res.status(401).send({ message: "Unauthorized" });
@@ -108,6 +80,7 @@ batchCertiRoute.post(
             object["Email_subject"] = csvData[i].Email_subject;
             object["Email_body"] = csvData[i].Email_body;
 
+
             batchCertificates.fields.push(object);
           }
           const certificate = new BatchCertificate(batchCertificates); //batchdetails saving in batchCertificate
@@ -120,14 +93,16 @@ batchCertiRoute.post(
               return;
             }
             sendMailToUser(obj, id, batch);
-            console.log(Date.now());
             setTimeout(() => {
               recursion(i + 1);
-            }, 1000);
+            }, 2000);
           }
           recursion(i);
+          console.log(arr, "updatedarray1")
         });
+      // await BatchCertificate.findOneAndUpdate({ unique},{Imagepath:arr});
 
+      console.log(arr, "updatedarray2")
       res.json("GOT");
     } catch (err) {
       console.error(err);
@@ -140,21 +115,13 @@ batchCertiRoute.get("/batchdetails", async (req, res) => {
   return res.status(200).json(doc);
 });
 
-// sendMailQueue.process(async (job) => {
-//   const { data, template, batch } = job.data;
-//   try {
-//     return await sendMailToUser(data, template, batch);
-//   } catch (error) {
-//     done(new Error("Error creating batch certificate"));
-//   }
-// });
+
 async function sendMailToUser(obj, id, batch) {
   try {
     const getData = await certificateModelData
       .findOne({ template: id })
       .populate("template");
     if (!getData || getData.length <= 0) {
-      // console.log("No template data found");
       throw new Error("Certificate template not found");
     }
 
@@ -210,7 +177,17 @@ async function sendMailToUser(obj, id, batch) {
     const type = getData.template.contentType.split("/")[1];
     const fileName = `${timeStamp}${certificataName}.${type}`;
     const filePath = `uploads/bulkcertificate/${fileName}`;
+
+    arr.push({ Email: obj.Email, Path: filePath })
+    await BatchCertificate.findOneAndUpdate({ unique }, { Imagepath: arr });
+
+
+    console.log(arr, "adding")
     fs.writeFileSync(filePath, imageData);
+
+
+
+
 
     const batchData = await studentCertificates({
       name: obj.Name,
@@ -250,18 +227,19 @@ async function sendMailToUser(obj, id, batch) {
               { successemails: doc.successemails }
             );
             resolve(info);
-          }
-          try {
-            if (err) {
-              let doc = await BatchCertificate.findOne({ unique: unique });
-              doc.failedemails.push(obj);
-              await BatchCertificate.findOneAndUpdate(
-                { unique },
-                { failedemails: doc.failedemails }
-              );
+          } else {
+            try {
+              if (err) {
+                let doc = await BatchCertificate.findOne({ unique: unique });
+                doc.failedemails.push(obj);
+                await BatchCertificate.findOneAndUpdate(
+                  { unique },
+                  { failedemails: doc.failedemails }
+                );
+              }
+            } catch (error) {
+              console.log(error, unique);
             }
-          } catch (error) {
-            console.log(error, unique);
           }
         });
     });
