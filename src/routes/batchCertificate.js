@@ -246,22 +246,26 @@ async function sendMailToUser(obj, id, batch) {
       nodemailer
         .createTransport(mailConfig)
         .sendMail(mailOptions, async (err, info) => {
-          if (err) {
-            let doc = await BatchCertificate.findOne({unique:unique})
-            doc.failedemails.push(obj);
-            await BatchCertificate.findOneAndUpdate({unique},{failedemails:doc.failedemails})
-            await sendMailQueue.clean(0, "completed");
-            reject(err);
-          } else {
+          if(info){
             let doc = await BatchCertificate.findOne({ unique: unique })
             doc.successemails.push(obj);
             await BatchCertificate.findOneAndUpdate({ unique }, { successemails: doc.successemails })
             resolve(info);
           }
+          try {
+            if(err){
+              let doc = await BatchCertificate.findOne({unique:unique})
+              doc.failedemails.push(obj);
+              await BatchCertificate.findOneAndUpdate({unique},{failedemails:doc.failedemails})
+            }
+          } catch (error) {
+              console.log(error,unique)
+          }
+          
         });
     });
   } catch (error) {
-    console.error(err);
+    console.error(error);
   }
 }
 
