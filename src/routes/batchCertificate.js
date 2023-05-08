@@ -22,6 +22,10 @@ const createCsvWriter = require("csv-writer").createObjectCsvWriter;
 const { template } = require("handlebars");
 const batchCertificateModel = require("../models/batchCertificateModel");
 
+// batchCertiRoute.get("/userimage",async(req,res)=>{
+//   let {id,email,path}=req.query
+//   let data=await 
+// })
 
 batchCertiRoute.post("/batch/:id", async (req, res) => {
   //uniq/
@@ -178,11 +182,14 @@ async function sendMailToUser(obj, id, batch) {
     const fileName = `${timeStamp}${certificataName}.${type}`;
     const filePath = `uploads/bulkcertificate/${fileName}`;
 
-    arr.push({ Email: obj.Email, Path: filePath })
-    await BatchCertificate.findOneAndUpdate({ unique }, { Imagepath: arr });
+    
+    let previousdata= await BatchCertificate.findOne({ unique });
+    let dd = previousdata.Imagepath
+    dd.push({ Email: obj.Email, Path: filePath })
+    await BatchCertificate.findOneAndUpdate({ unique },{Imagepath:dd});
 
 
-    console.log(arr, "adding")
+
     fs.writeFileSync(filePath, imageData);
 
 
